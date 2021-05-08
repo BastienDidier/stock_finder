@@ -9,7 +9,12 @@ import datetime
 from nsetools import Nse
 import matplotlib.pyplot as plt
 import json
+import os
 
+filePath = "result_stock_finder.txt";
+# As file at filePath is deleted now, so we should check if file exists or not not before deleting them
+if os.path.exists(filePath):
+    os.remove(filePath)
 nsel = Nse()
 stock_list = nsel.get_stock_codes() 
 stock_list= {v: k for k, v in stock_list.items()}
@@ -35,16 +40,20 @@ for company in stock_list:
 	metrics['Above_30%_low'] = metrics['52W_Low'] *1.3
 	# Condition 7: Current Price is within 25% of 52 week high 
 	metrics['Within_25%_high'] = metrics['52W_High']*0.7
-	metrics['condition1'] = (metrics['price'] > metrics['200 MA']) & (metrics['price'] > metrics['150 MA'])
-	metrics['condition2'] = metrics['150 MA'] > metrics['200 MA']
-	#3 The 200-day moving average line is trending up for 1 month 
-	metrics['condition3'] = metrics['200 MA'] > metrics['200 MA_1mago']
-	metrics['condition4'] = (metrics['50 MA'] > metrics['200 MA']) & (metrics['50 MA'] > metrics['150 MA'])
-	metrics['condition5'] = metrics['price'] > metrics['50 MA']
-	#6 The current stock price is at least 30 percent above its 52-week low
-	metrics['condition6'] = metrics['price'] > metrics['Above_30%_low']
-	#7 The current stock price is within at least 25 percent of its 52-week high.
-	metrics['condition7'] = metrics['price'] > metrics['Within_25%_high']
+	conditions = []
+	conditions.append((metrics['price'] > metrics['200 MA']) & (metrics['price'] > metrics['150 MA']))
+	conditions.append(metrics['150 MA'] > metrics['200 MA'])
+	conditions.append(metrics['200 MA'] > metrics['200 MA_1mago'])
+	conditions.append((metrics['50 MA'] > metrics['200 MA']) & (metrics['50 MA'] > metrics['150 MA']))
+	conditions.append(metrics['price'] > metrics['50 MA'])
+	conditions.append(metrics['price'] > metrics['Above_30%_low'])
+	conditions.append(metrics['price'] > metrics['Within_25%_high'])
+
+	for index, item in enumerate(conditions):
+		if item:
+			metrics['condition'+str(index + 1)] = 1
+		else : 
+			metrics['condition'+str(index + 1)] = 0
 
 	check_condition = True
 	for i in range(1, 8):
@@ -52,8 +61,13 @@ for company in stock_list:
 			check_condition = False
 
 	if check_condition:
+		company_result = {
+		"name" : company,
+		"symbol": stock_list[company],
+		"metrics": metrics 
+		}
 		with open('result_stock_finder.txt', 'a') as json_file:
-  			json_file.write(company)
+			json.dump(company_result, json_file)
 		print("new potential stock detected : "+company)
 
 print("stock_finder end success")
